@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Mobile Monitoring System</title>
+
+<style>
+    /* ===============================
+       GLOBAL PAGE STYLING
+    =============================== */
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 20px;
+        background-color: #f8f9fa;
+    }
+
+    h1 {
+        color: #2c3e50;
+    }
+
+    p {
+        color: #555;
+    }
+
+    /* ===============================
+       MAIN CONTAINER STYLING
+    =============================== */
+    .container {
+        display: inline-block;
+        padding: 25px;
+        background-color: #ecf0f1;
+        border-radius: 10px;
+        box-shadow: 0px 5px 15px rgba(0,0,0,0.1);
+        margin-top: 20px;
+    }
+
+    label {
+        font-size: 18px;
+        margin-right: 10px;
+    }
+
+    input[type="number"] {
+        font-size: 16px;
+        padding: 5px;
+        width: 120px;
+        margin-bottom: 20px;
+    }
+
+    button {
+        background-color: #3498db;
+        color: white;
+        font-size: 16px;
+        padding: 10px 20px;
+        margin: 10px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+        transition: 0.3s;
+    }
+
+    button:hover {
+        background-color: #2980b9;
+    }
+
+    /* Timer display styling */
+    #timerDisplay {
+        font-size: 20px;
+        font-weight: bold;
+        margin-top: 15px;
+        color: #e74c3c;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Smart Mobile Monitoring System</h1>
+<p>Manage your screen time with real-time alerts and usage limits.</p>
+
+<div class="container">
+
+    <!-- ===============================
+         TIME LIMIT INPUT
+    =============================== -->
+    <label for="timelimit">Set time (in minutes):</label>
+    <input type="number" id="timelimit" min="1" placeholder="Enter minutes">
+
+    <br><br>
+
+    <!-- ===============================
+         CONTROL BUTTONS
+    =============================== -->
+    <button onclick="startMonitoring()">Start Monitoring</button>
+    <button onclick="generateReports()">Generate Reports</button>
+    <button onclick="resetUsage()">Reset Usage</button>
+
+    <!-- Live timer display -->
+    <div id="timerDisplay">Elapsed Time: 0s</div>
+
+</div>
+
+<script>
+/* ==========================================================
+   GLOBAL VARIABLES
+========================================================== */
+let usageLimit = 0;            // Maximum allowed usage time (milliseconds)
+let usageTime = 0;             // Current usage time (milliseconds)
+let monitoringInterval = null; // Interval reference
+let isAlerted75 = false;       // Flag for 75% alert
+let isAlerted90 = false;       // Flag for 90% alert
+
+/* ==========================================================
+   START MONITORING FUNCTION
+   - Validates input
+   - Resets tracking
+   - Starts timer
+========================================================== */
+function startMonitoring() {
+
+    const timeLimitInput = document.getElementById("timelimit").value;
+
+    // Validate input
+    if (!timeLimitInput || timeLimitInput <= 0) {
+        alert("Please enter a valid number greater than 0.");
+        return;
+    }
+
+    // Prevent multiple intervals running
+    if (monitoringInterval !== null) {
+        clearInterval(monitoringInterval);
+    }
+
+    // Convert minutes to milliseconds
+    usageLimit = timeLimitInput * 60 * 1000;
+    usageTime = 0;
+    isAlerted75 = false;
+    isAlerted90 = false;
+
+    alert(`Monitoring started. Limit set to ${timeLimitInput} minutes.`);
+
+    // Start monitoring every second
+    monitoringInterval = setInterval(() => {
+        usageTime += 1000;
+        updateDisplay();
+        checkUsage();
+    }, 1000);
+}
+
+/* ==========================================================
+   UPDATE TIMER DISPLAY
+========================================================== */
+function updateDisplay() {
+    const seconds = Math.floor(usageTime / 1000);
+    document.getElementById("timerDisplay").innerText =
+        "Elapsed Time: " + seconds + "s";
+}
+
+/* ==========================================================
+   CHECK USAGE THRESHOLDS
+   - 75%
+   - 90%
+   - 100%
+========================================================== */
+function checkUsage() {
+
+    const time75 = 0.75 * usageLimit;
+    const time90 = 0.90 * usageLimit;
+
+    // 75% Alert
+    if (usageTime >= time75 && !isAlerted75) {
+        isAlerted75 = true;
+        alertWithSoundAndVibration("You have reached 75% of your screen time limit.");
+    }
+
+    // 90% Alert
+    if (usageTime >= time90 && !isAlerted90) {
+        isAlerted90 = true;
+        alertWithSoundAndVibration("You have reached 90% of your screen time limit.");
+    }
+
+    // 100% Limit Reached
+    if (usageTime >= usageLimit) {
+        clearInterval(monitoringInterval);
+        monitoringInterval = null;
+        alert("You have reached your screen time limit. System will shut down.");
+        shutdownDevice();
+    }
+}
+
+/* ==========================================================
+   ALERT WITH SOUND + VIBRATION
+========================================================== */
+function alertWithSoundAndVibration(message) {
+
+    alert(message);
+
+    // Vibrate (if supported)
+    if ("vibrate" in navigator) {
+        navigator.vibrate([500, 300, 500]);
+    }
+
+    // Simple beep using Web Audio API (no external file needed)
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    oscillator.connect(audioContext.destination);
+
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.3);
+}
+
+/* ==========================================================
+   SIMULATED SHUTDOWN
+========================================================== */
+function shutdownDevice() {
+    alert("System shutdown initiated.");
+    // In real mobile app: add OS-level restriction logic
+}
+
+/* ==========================================================
+   GENERATE REPORTS
+========================================================== */
+function generateReports() {
+
+    const minutesUsed = (usageTime / 60000).toFixed(2);
+
+    alert("Report:\nTotal Usage: " + minutesUsed + " minutes");
+}
+
+/* ==========================================================
+   RESET USAGE
+========================================================== */
+function resetUsage() {
+
+    clearInterval(monitoringInterval);
+    monitoringInterval = null;
+
+    usageTime = 0;
+    isAlerted75 = false;
+    isAlerted90 = false;
+
+    updateDisplay();
+
+    alert("Usage limits have been reset.");
+}
+
+</script>
+
+</body>
+</html>
